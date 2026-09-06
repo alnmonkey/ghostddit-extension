@@ -58,7 +58,8 @@
             "content/10-orchestrator.js",
             "content/11-update-banner.js",
             "content/12-bootstrap.js",
-            "content/13-force-reveal.js"
+            "content/13-force-reveal.js",
+            "content/14-whats-new.js"
         ],
         "css": ["content.css"],
         "run_at": "document_idle"

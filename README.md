@@ -22,6 +22,7 @@ Not affiliated with Reddit, Inc. Ghostddit is not distributed through the Chrome
 - Lets you upvote and downvote revealed posts and comments inline, using your existing logged-in Reddit session.
 - Force-reveal mode (Ctrl+G) is a global toggle that shows the Ghostddit panel on any profile, even one Reddit is already rendering normally, and stays on across every profile you visit until you turn it off.
 - Includes a built-in update checker that shows the installed version, checks GitHub Releases, and surfaces a dismissible update banner on Reddit pages.
+- Shows a one-time "what's new" panel on the first Reddit page you load after installing or updating Ghostddit, listing what changed in that release.
 
 ## Installing from Releases
 

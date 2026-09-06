@@ -48,6 +48,7 @@ Before opening a PR, confirm that:
 - Ctrl+G's state also survives a hard page reload and opening the profile in a new tab (it's stored in the `ghostddit_force_mode` cookie) — confirm reloading a profile with it on keeps it on, and turning it off and reloading keeps it off.
 - With Ctrl+G on for a normal, already-rendering profile, switch between Overview, Posts, and Comments a few times and confirm Reddit's native feed stays hidden the whole time and the Ghostddit panel never gets pushed below real posts/comments reappearing.
 - Ctrl+G does not trigger the browser's Find bar or any Reddit page shortcut.
+- If you bumped the manifest version and added a matching entry to `WHATS_NEW` in background/whats-new.js: reload the unpacked extension (a fresh Load unpacked, or Reload on the extensions page, both fire `onInstalled`), then visit a Reddit page and confirm the what's-new panel appears with your new feature text. Dismiss it, reload the extension again without bumping the version, and confirm it does *not* reappear.
 - The popup still renders the cached state and can trigger a manual update check.
 - There are no new errors in the extension service worker console or the page console.
 

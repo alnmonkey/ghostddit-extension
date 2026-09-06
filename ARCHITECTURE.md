@@ -23,8 +23,9 @@ The code is split into two mostly independent parts:
 - background/index.js — Chrome-only entry point that loads the split background modules
 - background/reddit-api.js — Reddit API proxying for posts, comments, and subreddit icons
 - background/update-checker.js — GitHub release polling and cached update state
-- content/01-state.js through content/12-bootstrap.js — the content-script pipeline
-- content.css — styles for the injected UI and update banner
+- background/whats-new.js — queues a one-time what's-new notice on install/update
+- content/01-state.js through content/14-whats-new.js — the content-script pipeline
+- content.css — styles for the injected UI, update banner, and what's-new panel
 - popup.html, popup.css, popup.js — toolbar popup UI
 
 ## Content-script pipeline
@@ -44,6 +45,7 @@ The content script is split into numbered modules so each one has a narrow job.
 11. update-banner — show the dismissible update banner
 12. bootstrap — watch DOM and SPA navigation changes and start the flow
 13. force-reveal — Ctrl+G global toggle (persisted in a cookie) to force the panel onto a normal, already-rendering profile, and keep it on across every profile, tab, and reload until toggled off
+14. whats-new — show a one-time panel listing what changed, the first time a Reddit page loads after an install or update
 
 The main entry point is the orchestrator in content/10-orchestrator.js. It runs
 whenever the DOM changes or Reddit navigates to a new view.
@@ -52,11 +54,15 @@ whenever the DOM changes or Reddit navigates to a new view.
 
 The background worker is also split into focused modules.
 
-- background/index.js loads the other two background files in Chrome via importScripts()
+- background/index.js loads the other background files in Chrome via importScripts()
 - background/reddit-api.js listens for message types such as
   GHOSTDDIT_FETCH_POSTS and GHOSTDDIT_FETCH_SUBREDDIT_ICON
 - background/update-checker.js polls GitHub Releases, stores the result in
   chrome.storage.local, and exposes GHOSTDDIT_CHECK_UPDATE_NOW for the popup
+- background/whats-new.js listens for chrome.runtime.onInstalled and, if the
+  manifest version has an entry in its WHATS_NEW map, writes
+  ghostddit_whats_new_pending to chrome.storage.local for content/14-whats-new.js
+  to pick up
 
 ## Why the background worker exists
 
@@ -171,6 +177,29 @@ problems come from that, handled two different ways:
   only the first time, and `stopWatchingHiddenFeed()` tears the observer
   down whenever the element is released (navigation, disabling force mode).
 
+## What's-new panel
+
+`background/whats-new.js` listens for `chrome.runtime.onInstalled`. If the
+new manifest version has an entry in its `WHATS_NEW` map (a list of
+feature strings), it writes `{ version, features, reason }` to
+`ghostddit_whats_new_pending` in `chrome.storage.local`. Releases with no
+entry in the map queue nothing — silent/internal-only updates don't show a
+panel.
+
+`content/14-whats-new.js` reads that key on every Reddit page load and
+renders an on-page modal (`#ghostddit-whats-new-overlay`) listing the
+features, if it hasn't already been dismissed for that exact version
+(`ghostddit_whats_new_dismissed_version`). Dismissing it (the close button,
+"Got it", clicking outside the modal, or Escape) writes the dismissed
+version so it won't reappear on later page loads, even though the pending
+key itself is left in place.
+
+This is deliberately an on-page panel and not the real toolbar popup:
+`chrome.action.openPopup()` requires an active user gesture in Manifest V3,
+so there is no supported way to force the actual extension popup open on
+its own when a Reddit tab loads. The on-page modal is styled to look and
+read like the popup instead.
+
 ## Manifest split
 
 - manifest.json and manifest.chrome.json target Chromium-based browsers
@@ -190,6 +219,7 @@ entry point differs by browser.
 | Adjust how the extension detects profile pages | content/03-context.js                                                  |
 | Add or change a Reddit API request             | background/reddit-api.js                                               |
 | Change update-check timing or storage          | background/update-checker.js                                           |
+| Change what's-new panel content or timing      | background/whats-new.js (WHATS_NEW map) and content/14-whats-new.js    |
 | Change popup UI states                         | popup.js and popup.css                                                 |
 | Adjust the DOM/SPA trigger logic               | content/12-bootstrap.js                                                |
 
