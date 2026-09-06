@@ -64,6 +64,48 @@
     color: var(--color-neutral-content-weak, #7c7c7c);
 }
 
+#ghostddit-revealed-posts .ghostddit-vote-controls {
+    color: var(--color-neutral-content-weak, #7c7c7c);
+}
+
+#ghostddit-revealed-posts .ghostddit-vote-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    line-height: 0;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+#ghostddit-revealed-posts .ghostddit-vote-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+#ghostddit-revealed-posts .ghostddit-vote-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+#ghostddit-revealed-posts .ghostddit-vote-up.is-active {
+    color: #ff4500;
+}
+
+#ghostddit-revealed-posts .ghostddit-vote-down.is-active {
+    color: #7193ff;
+}
+
+#ghostddit-revealed-posts .ghostddit-vote-score {
+    min-width: 18px;
+    text-align: center;
+}
+
 #ghostddit-revealed-posts .ghostddit-status {
     font-size: 12px;
     color: var(--color-neutral-content-weak, #7c7c7c);

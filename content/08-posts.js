@@ -65,14 +65,14 @@
             }
 
             <span class="flex items-center text-12 text-neutral-content-weak relative z-10" style="margin-top:8px; gap:16px;">
-            <span class="ghostddit-vote flex items-center" style="gap:6px;">
-                <span style="display:inline-flex; color:inherit;">
+            <span class="ghostddit-vote-controls flex items-center" style="gap:2px;" data-base-score="${Number(p.score) || 0}">
+                <button type="button" class="ghostddit-vote-btn ghostddit-vote-up" aria-label="Upvote">
                 <svg fill="currentColor" height="16" width="16" viewBox="0 0 20 20" style="display:block"><path d="M10 19a3.966 3.966 0 01-3.96-3.962V10.98H2.838a1.731 1.731 0 01-1.605-1.073 1.734 1.734 0 01.377-1.895L9.364.254a.925.925 0 011.272 0l7.754 7.759c.498.499.646 1.242.376 1.894-.27.652-.9 1.073-1.605 1.073h-3.202v4.058A3.965 3.965 0 019.999 19H10zM2.989 9.179H7.84v5.731c0 1.13.81 2.163 1.934 2.278a2.163 2.163 0 002.386-2.15V9.179h4.851L10 2.163 2.989 9.179z"/></svg>
-                </span>
-                <span class="font-semibold text-neutral-content-strong">${formatCount(p.score)}</span>
-                <span style="display:inline-flex; color:inherit;">
+                </button>
+                <span class="ghostddit-vote-score font-semibold text-neutral-content-strong">${formatCount(p.score)}</span>
+                <button type="button" class="ghostddit-vote-btn ghostddit-vote-down" aria-label="Downvote">
                 <svg fill="currentColor" height="16" width="16" viewBox="0 0 20 20" style="display:block"><path d="M10 1a3.966 3.966 0 013.96 3.962V9.02h3.202c.706 0 1.335.42 1.605 1.073.27.652.122 1.396-.377 1.895l-7.754 7.759a.925.925 0 01-1.272 0l-7.754-7.76a1.734 1.734 0 01-.376-1.894c.27-.652.9-1.073 1.605-1.073h3.202V4.962A3.965 3.965 0 0110 1zm7.01 9.82h-4.85V5.09c0-1.13-.81-2.163-1.934-2.278a2.163 2.163 0 00-2.386 2.15v5.859H2.989l7.01 7.016 7.012-7.016z"/></svg>
-                </span>
+                </button>
             </span>
             <a class="flex items-center relative z-10 hover:underline" href="${permalink}" target="_blank" rel="noopener" style="gap:6px;">
                 <span style="display:inline-flex; color:inherit;">
@@ -262,6 +262,7 @@
             const cardEl = wrapper.firstElementChild;
             const gallery = getGalleryImages(p);
             if (gallery) setupGalleryCard(cardEl, gallery);
+            setupVoteControls(cardEl, toFullname(p.name || p.id, 't3'), 'post');
             cardEls.push(cardEl);
             frag.appendChild(cardEl);
         });
