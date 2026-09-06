@@ -17,5 +17,5 @@
         setTimeout(tryInject, 300);
     });
 
-    tryInject();
+    setTimeout(tryInject, 0);
     initUpdateBanner();

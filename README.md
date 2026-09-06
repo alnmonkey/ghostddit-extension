@@ -20,6 +20,7 @@ Not affiliated with Reddit, Inc. Ghostddit is not distributed through the Chrome
 - Reveals hidden post and comment history on Reddit profile pages across Overview, Posts, and Comments views.
 - Renders cards with subreddit icons, galleries, videos, and self-text using Reddit's public data sources.
 - Lets you upvote and downvote revealed posts and comments inline, using your existing logged-in Reddit session.
+- Force-reveal mode (Ctrl+G) is a global toggle that shows the Ghostddit panel on any profile, even one Reddit is already rendering normally, and stays on across every profile you visit until you turn it off.
 - Includes a built-in update checker that shows the installed version, checks GitHub Releases, and surfaces a dismissible update banner on Reddit pages.
 
 ## Installing from Releases
@@ -55,6 +56,7 @@ Open the Ghostddit popup to see the installed version and the latest cached upda
 3. If Reddit shows the empty-state message, Ghostddit will load the user's public posts and comments inline.
 4. Scroll to load more results automatically.
 5. Use the arrows next to a revealed post or comment's score to upvote or downvote it. This requires you to be logged in to Reddit in that browser tab; voting uses your own Reddit account exactly as it would from Reddit's normal UI.
+6. Press Ctrl+G (or Cmd+G on Mac) to turn on force-reveal globally: it hides Reddit's native feed and mounts Ghostddit's cards in its place, and keeps doing that automatically as you browse from profile to profile, in new tabs, and even after a page reload — you don't need to press it again. The data shown is still the same public search results Ghostddit always uses. Press Ctrl+G again to turn it back off everywhere and restore Reddit's native feed.
 
 ## Permissions
 
@@ -88,6 +90,7 @@ Contributions are welcome. If you are making a change, keep it focused and expla
 
 - Works only on public Reddit profile pages and does not bypass Reddit access controls.
 - Does not reveal private, removed, deleted, or suspended content.
+- Force-reveal mode (Ctrl+G) fetches the same public search results as the automatic empty-state flow; it does not surface anything that wasn't already accessible without it. It's a global toggle stored in a `ghostddit_force_mode` cookie on reddit.com, so it stays on across profiles, tabs, and page reloads until you press Ctrl+G again to turn it off.
 - Firefox support is temporary add-on loading, so the extension must be reloaded after a restart.
 
 ## Disclaimer

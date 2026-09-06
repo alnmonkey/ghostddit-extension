@@ -43,6 +43,11 @@ Before opening a PR, confirm that:
 - It does not break a normal profile that already renders content natively.
 - Posts and comments still load and paginate correctly if you touched those flows.
 - Upvote/downvote buttons work on both posts and comments while logged in, and fail gracefully (no crash, no stuck buttons) when logged out.
+- Ctrl+G force-reveals the panel on a normal profile that already renders content, hides Reddit's own feed while it's on, and Ctrl+G again restores Reddit's feed and removes the panel.
+- Ctrl+G is global: with it on, navigate (via in-app links, not a hard reload) to a different profile and confirm it stays on and re-applies there without needing to press Ctrl+G again.
+- Ctrl+G's state also survives a hard page reload and opening the profile in a new tab (it's stored in the `ghostddit_force_mode` cookie) — confirm reloading a profile with it on keeps it on, and turning it off and reloading keeps it off.
+- With Ctrl+G on for a normal, already-rendering profile, switch between Overview, Posts, and Comments a few times and confirm Reddit's native feed stays hidden the whole time and the Ghostddit panel never gets pushed below real posts/comments reappearing.
+- Ctrl+G does not trigger the browser's Find bar or any Reddit page shortcut.
 - The popup still renders the cached state and can trigger a manual update check.
 - There are no new errors in the extension service worker console or the page console.
 

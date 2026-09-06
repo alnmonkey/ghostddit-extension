@@ -18,3 +18,26 @@
     let nextCommentsUrl = null;
     let commentsLoading = false;
     let commentsExhausted = false;
+
+    const FORCE_MODE_COOKIE = 'ghostddit_force_mode';
+
+    function readForceModeCookie() {
+        try {
+            const match = document.cookie.match(/(?:^|;\s*)ghostddit_force_mode=(true|false)(?:;|$)/);
+            return !!match && match[1] === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function writeForceModeCookie(value) {
+        try {
+            document.cookie = `${FORCE_MODE_COOKIE}=${value ? 'true' : 'false'}; path=/; max-age=31536000; SameSite=Lax`;
+        } catch (e) {}
+    }
+
+    let forceMode = readForceModeCookie();
+    let forceHiddenEl = null;
+    let forceStyleObserver = null;
+    let forceStyleObserverEl = null;
+    let injectCheckTimer = null;

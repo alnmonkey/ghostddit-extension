@@ -43,6 +43,7 @@ The content script is split into numbered modules so each one has a narrow job.
 10. orchestrator — decide when to inject or re-use the panel
 11. update-banner — show the dismissible update banner
 12. bootstrap — watch DOM and SPA navigation changes and start the flow
+13. force-reveal — Ctrl+G global toggle (persisted in a cookie) to force the panel onto a normal, already-rendering profile, and keep it on across every profile, tab, and reload until toggled off
 
 The main entry point is the orchestrator in content/10-orchestrator.js. It runs
 whenever the DOM changes or Reddit navigates to a new view.
@@ -100,6 +101,76 @@ cached update info from chrome.storage.local, and renders one of a few UI
 states for checking, up to date, update available, or error. If the user clicks
 Check for updates, it asks the background worker to run a fresh check right away.
 
+## Force-reveal mode
+
+content/10-orchestrator.js's injection logic is split into two functions:
+`injectAt(ctx, anchorEl, keySuffix, headerPrefix)`, which does the actual
+mount/update/pagination-reset work against whatever anchor element it's given,
+and `tryInject()`, the normal auto-detection path that finds Reddit's
+empty-state element and calls `injectAt` with it.
+
+content/13-force-reveal.js reuses `injectAt` for a second, independent path:
+on Ctrl+G it looks up the page's `<shreddit-feed>` (whether or not Reddit put
+anything useful in it), hides it with `display:none`, and calls `injectAt`
+with the feed element itself as the anchor and a `|force` key suffix so its
+dedup key never collides with the empty-state flow's. Toggling Ctrl+G again
+restores the feed's display and tears the panel down.
+
+Force mode is a single global on/off switch, not a per-page one, and it's
+persisted in a `ghostddit_force_mode` cookie (`true`/`false`) on reddit.com
+via `readForceModeCookie()` / `writeForceModeCookie()` in
+content/01-state.js, so it survives page reloads and new tabs, not just
+in-app navigation. `let forceMode` is initialized from that cookie at
+script load, and `toggleForceMode()` writes it back out on every toggle.
+Reddit tears down and rebuilds `<shreddit-feed>` on every SPA navigation,
+so on `ghostddit:locationchange` the force-reveal listener only releases
+its reference to the now-stale feed element — it does not touch
+`forceMode` or the cookie. `tryInject()` (content/10-orchestrator.js)
+checks `forceMode` first: if it's set, it re-applies `forceInject()` to
+whatever profile page was just navigated to (or the one already loaded,
+on a fresh page load) instead of bailing out, which is what makes the
+toggle keep working across every profile, tab, and reload until Ctrl+G
+turns it off. The two paths still never fight over the panel —
+`tryInject()`'s normal empty-state branch only runs when `forceMode` is
+off. Note content/12-bootstrap.js calls its initial `tryInject()` via
+`setTimeout(tryInject, 0)` rather than synchronously — that's required
+so `forceInject()` (defined later, in content/13-force-reveal.js) exists
+by the time a cookie-restored `forceMode` needs it on a cold page load.
+
+The keydown listener is registered on `document` in the capture phase and
+calls `preventDefault()` / `stopImmediatePropagation()` before Reddit's own
+page scripts or the browser's own Ctrl+G ("Find Next") binding see the event.
+
+### Surviving Reddit's re-renders on tab switches
+
+Switching between Overview/Posts/Comments on a profile is an in-app route
+change (`pushState`), not a full reload, and Reddit re-renders the *same*
+elements in place rather than replacing them outright. Two separate
+problems come from that, handled two different ways:
+
+- **Auto-detection path (no force mode):** `tryInject()` used to inject the
+  moment it saw Reddit's empty-state placeholder, but that placeholder is
+  often transient — Reddit shows it for an instant while the real tab
+  content is still loading. Injecting immediately anchored Ghostddit to a
+  node Reddit was about to replace, stranding the panel below the real
+  content once it finished loading. `tryInject()` now debounces via
+  `injectCheckTimer`: every mutation push the check back by 400ms, so it
+  only commits once the DOM has held still for a moment. If the empty
+  state is gone by the time the check fires, `removeStalePanel()` cleans
+  up instead of injecting.
+- **Force mode:** here Reddit's own feed genuinely has content, and
+  `forceInject()` hides the `<shreddit-feed>` element itself via inline
+  `display:none`. The problem is that Reddit's internal re-render on a tab
+  switch can reset that element's `style` attribute directly — a mutation
+  that content/12-bootstrap.js's `MutationObserver` (`childList`/`subtree`
+  only) never sees, since no nodes are added or removed. `forceInject()`
+  now pairs the hide with `watchHiddenFeedElement()`, a second, dedicated
+  `MutationObserver` on just that element watching `attributes: ['style']`,
+  which re-applies `display:none` the instant Reddit undoes it.
+  `forceInject()` also always re-asserts the hide on every call rather than
+  only the first time, and `stopWatchingHiddenFeed()` tears the observer
+  down whenever the element is released (navigation, disabling force mode).
+
 ## Manifest split
 
 - manifest.json and manifest.chrome.json target Chromium-based browsers
@@ -110,16 +181,17 @@ entry point differs by browser.
 
 ## Good places to edit
 
-| I want to...                                   | Look here                                                        |
-| ---------------------------------------------- | ---------------------------------------------------------------- |
-| Change the injected post card UI               | content/08-posts.js and content.css                              |
-| Change comment rendering or pagination         | content/09-comments.js and content/10-orchestrator.js            |
-| Change voting behavior or requests             | content/04-messaging.js (`setupVoteControls`, `shredditGraphql`) |
-| Adjust how the extension detects profile pages | content/03-context.js                                            |
-| Add or change a Reddit API request             | background/reddit-api.js                                         |
-| Change update-check timing or storage          | background/update-checker.js                                     |
-| Change popup UI states                         | popup.js and popup.css                                           |
-| Adjust the DOM/SPA trigger logic               | content/12-bootstrap.js                                          |
+| I want to...                                   | Look here                                                              |
+| ---------------------------------------------- | ---------------------------------------------------------------------- |
+| Change the injected post card UI               | content/08-posts.js and content.css                                    |
+| Change comment rendering or pagination         | content/09-comments.js and content/10-orchestrator.js                  |
+| Change voting behavior or requests             | content/04-messaging.js (`setupVoteControls`, `shredditGraphql`)       |
+| Change force-reveal (Ctrl+G) behavior          | content/13-force-reveal.js and content/10-orchestrator.js (`injectAt`) |
+| Adjust how the extension detects profile pages | content/03-context.js                                                  |
+| Add or change a Reddit API request             | background/reddit-api.js                                               |
+| Change update-check timing or storage          | background/update-checker.js                                           |
+| Change popup UI states                         | popup.js and popup.css                                                 |
+| Adjust the DOM/SPA trigger logic               | content/12-bootstrap.js                                                |
 
 ## Constraints worth knowing
 
