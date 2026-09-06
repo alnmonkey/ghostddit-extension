@@ -19,6 +19,7 @@ Not affiliated with Reddit, Inc. Ghostddit is not distributed through the Chrome
 
 - Reveals hidden post and comment history on Reddit profile pages across Overview, Posts, and Comments views.
 - Renders cards with subreddit icons, galleries, videos, and self-text using Reddit's public data sources.
+- Lets you upvote and downvote revealed posts and comments inline, using your existing logged-in Reddit session.
 - Includes a built-in update checker that shows the installed version, checks GitHub Releases, and surfaces a dismissible update banner on Reddit pages.
 
 ## Installing from Releases
@@ -53,17 +54,18 @@ Open the Ghostddit popup to see the installed version and the latest cached upda
 2. Switch to Overview, Posts, or Comments.
 3. If Reddit shows the empty-state message, Ghostddit will load the user's public posts and comments inline.
 4. Scroll to load more results automatically.
+5. Use the arrows next to a revealed post or comment's score to upvote or downvote it. This requires you to be logged in to Reddit in that browser tab; voting uses your own Reddit account exactly as it would from Reddit's normal UI.
 
 ## Permissions
 
-| Permission                                                | Why it is needed                                                       |
-| --------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `storage`                                                 | Caches update-check results and the update-banner dismissal state.     |
-| `alarms`                                                  | Schedules the periodic background update check.                        |
-| `https://api.reddit.com/*` and `https://www.reddit.com/*` | Fetches posts, comments, subreddit icons, and the Reddit page context. |
-| `https://api.github.com/*`                                | Checks the latest GitHub release.                                      |
+| Permission                                                | Why it is needed                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `storage`                                                 | Caches update-check results and the update-banner dismissal state.                               |
+| `alarms`                                                  | Schedules the periodic background update check.                                                  |
+| `https://api.reddit.com/*` and `https://www.reddit.com/*` | Fetches posts, comments, subreddit icons, the Reddit page context, and submits vote requests.    |
+| `https://api.github.com/*`                                | Checks the latest GitHub release.                                                                |
 
-Ghostddit does not collect or store personal data of its own; requests go directly from the browser to Reddit's and GitHub's public APIs.
+Ghostddit does not collect or store personal data of its own; requests go directly from the browser to Reddit's and GitHub's public APIs. Voting requests are sent directly to Reddit using your browser's existing Reddit session/cookies — Ghostddit never reads, stores, or transmits your session or login credentials itself, only the same `csrf_token` cookie Reddit's own front end uses.
 
 ## Development
 

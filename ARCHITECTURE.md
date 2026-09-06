@@ -34,12 +34,12 @@ The content script is split into numbered modules so each one has a narrow job.
 1. state — shared variables and panel state
 2. lifecycle — extension-context validation and recovery
 3. context — parse the profile URL and detect the active tab/sort
-4. messaging — bridge requests to the background worker and cache subreddit icons
+4. messaging — bridge requests to the background worker, cache subreddit icons, and vote on posts/comments directly against reddit.com
 5. format-utils — small helpers for counts, dates, escaping, and URL decoding
 6. media — extract images, galleries, and videos from Reddit post data
 7. markdown — render a small subset of Reddit markdown for self-text
-8. posts — render the posts panel and pagination
-9. comments — render the comments panel and pagination
+8. posts — render the posts panel, pagination, and vote button wiring
+9. comments — render the comments panel, pagination, and vote button wiring
 10. orchestrator — decide when to inject or re-use the panel
 11. update-banner — show the dismissible update banner
 12. bootstrap — watch DOM and SPA navigation changes and start the flow
@@ -59,23 +59,36 @@ The background worker is also split into focused modules.
 
 ## Why the background worker exists
 
-Reddit's API responses are not available to a page-context fetch on reddit.com
-without running into CORS restrictions. The background service worker is the
-privileged context that can perform those requests and return the result to the
-content script through chrome.runtime.sendMessage.
+Reddit's `api.reddit.com` responses are not available to a page-context fetch
+on reddit.com without running into CORS restrictions, so post/comment search
+and subreddit icon lookups go through the background service worker, which is
+the privileged context that can perform those requests and return the result
+to the content script through chrome.runtime.sendMessage.
 
 The same pattern is used for GitHub release checks for consistency.
 
+Two flows are the exception and call `www.reddit.com` straight from the
+content script instead: comment-search pagination
+(content/09-comments.js `fetchCommentsPage`) and voting
+(content/04-messaging.js `shredditGraphql`). Both run on reddit.com's own
+origin, so there's no CORS boundary to cross, and both need the browser's
+real, cookie-backed Reddit session rather than the extension's own context —
+voting in particular must go out under the user's own logged-in session, not
+the background worker's.
+
 ## Message contract
 
-The content script never calls the network directly. It sends messages to the
-background worker and waits for a response.
+Most background work goes through explicit messages from the content script
+to the background worker, which waits and responds.
 
 | Message type                     | Sender           | Background handler             | Response shape            |
 | -------------------------------- | ---------------- | ------------------------------ | ------------------------- |
 | `GHOSTDDIT_FETCH_POSTS`          | `content script` | `background/reddit-api.js`     | `{ ok, posts, after }`    |
 | `GHOSTDDIT_FETCH_SUBREDDIT_ICON` | `content script` | `background/reddit-api.js`     | `{ ok, subreddit, icon }` |
 | `GHOSTDDIT_CHECK_UPDATE_NOW`     | `popup.js`       | `background/update-checker.js` | `{ ok, info }`            |
+
+Voting does not go through this message contract — see "Why the background
+worker exists" above.
 
 Each handler keeps the message channel open with return true when it needs to
 send a delayed response.
@@ -97,15 +110,16 @@ entry point differs by browser.
 
 ## Good places to edit
 
-| I want to...                                   | Look here                                             |
-| ---------------------------------------------- | ----------------------------------------------------- |
-| Change the injected post card UI               | content/08-posts.js and content.css                   |
-| Change comment rendering or pagination         | content/09-comments.js and content/10-orchestrator.js |
-| Adjust how the extension detects profile pages | content/03-context.js                                 |
-| Add or change a Reddit API request             | background/reddit-api.js                              |
-| Change update-check timing or storage          | background/update-checker.js                          |
-| Change popup UI states                         | popup.js and popup.css                                |
-| Adjust the DOM/SPA trigger logic               | content/12-bootstrap.js                               |
+| I want to...                                   | Look here                                                        |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| Change the injected post card UI               | content/08-posts.js and content.css                              |
+| Change comment rendering or pagination         | content/09-comments.js and content/10-orchestrator.js            |
+| Change voting behavior or requests             | content/04-messaging.js (`setupVoteControls`, `shredditGraphql`) |
+| Adjust how the extension detects profile pages | content/03-context.js                                            |
+| Add or change a Reddit API request             | background/reddit-api.js                                         |
+| Change update-check timing or storage          | background/update-checker.js                                     |
+| Change popup UI states                         | popup.js and popup.css                                           |
+| Adjust the DOM/SPA trigger logic               | content/12-bootstrap.js                                          |
 
 ## Constraints worth knowing
 

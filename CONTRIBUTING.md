@@ -42,6 +42,7 @@ Before opening a PR, confirm that:
 - The change works on a profile that shows the hidden-profile empty state.
 - It does not break a normal profile that already renders content natively.
 - Posts and comments still load and paginate correctly if you touched those flows.
+- Upvote/downvote buttons work on both posts and comments while logged in, and fail gracefully (no crash, no stuck buttons) when logged out.
 - The popup still renders the cached state and can trigger a manual update check.
 - There are no new errors in the extension service worker console or the page console.
 
