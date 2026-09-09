@@ -3,9 +3,10 @@
 const WHATS_NEW_PENDING_KEY = 'ghostddit_whats_new_pending';
 
 const WHATS_NEW = {
-    '3.0.0': [
+    '3.0.1': [
         'Upvote and Downvote posts and comments on the ghostddit revealed posts and comments.',
-        'Ctrl+G force-reveal: Force ghostddit to work on all profiles public & hidden.',
+        'CTRL+G / CMD+G force-reveal: Force ghostddit to work on all profiles public & hidden.',
+        'Bug Fixes',
     ]
 };
 
