@@ -41,4 +41,7 @@ let forceMode = readForceModeCookie();
 let forceHiddenEl = null;
 let forceStyleObserver = null;
 let forceStyleObserverEl = null;
+let autoHiddenEl = null;
+let autoStyleObserver = null;
+let autoStyleObserverEl = null;
 let injectCheckTimer = null;

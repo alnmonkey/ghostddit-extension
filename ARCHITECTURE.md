@@ -107,20 +107,46 @@ cached update info from chrome.storage.local, and renders one of a few UI
 states for checking, up to date, update available, or error. If the user clicks
 Check for updates, it asks the background worker to run a fresh check right away.
 
-## Force-reveal mode
+## Force-reveal mode and auto-detection
 
 content/10-orchestrator.js's injection logic is split into two functions:
 `injectAt(ctx, anchorEl, keySuffix, headerPrefix)`, which does the actual
 mount/update/pagination-reset work against whatever anchor element it's given,
-and `tryInject()`, the normal auto-detection path that finds Reddit's
-empty-state element and calls `injectAt` with it.
+and `tryInject()`, the auto-detection path that classifies a profile as
+hidden and calls `injectAt`.
 
-content/13-force-reveal.js reuses `injectAt` for a second, independent path:
-on Ctrl+G it looks up the page's `<shreddit-feed>` (whether or not Reddit put
-anything useful in it), hides it with `display:none`, and calls `injectAt`
-with the feed element itself as the anchor and a `|force` key suffix so its
-dedup key never collides with the empty-state flow's. Toggling Ctrl+G again
-restores the feed's display and tears the panel down.
+Both paths anchor the panel to the page's `<shreddit-feed>` element rather
+than any element inside it:
+
+- **Auto-detection (`tryInject()`, content/10-orchestrator.js):** on a
+  context change (new profile, tab, or sort), it debounces via
+  `injectCheckTimer` (400ms after the DOM last mutated) and then checks
+  Reddit's empty-state marker, `#empty-feed-content`
+  (`findEmptyFeedContent()`, content/03-context.js), to decide whether the
+  profile is hidden. If it is, it finds `<shreddit-feed>` via
+  `findFeedElement()`, hides it with `display:none`, watches it with
+  `watchAutoHiddenFeed()` (a `MutationObserver` on `attributes: ['style']`
+  that re-applies the hide if Reddit resets it), and calls `injectAt` with
+  the feed element as the anchor. While the current profile/tab/sort still
+  matches the panel already shown (`contextKey(ctx) === lastContextKey`),
+  `tryInject()` returns immediately without touching
+  `#empty-feed-content` at all — this is what keeps the panel's own
+  infinite-scroll pagination (which mutates the DOM on every page load) from
+  re-running the classification logic.
+- **Force mode (`content/13-force-reveal.js`, Ctrl+G):** on toggle, it finds
+  `<shreddit-feed>` unconditionally (regardless of whether the profile is
+  actually hidden), hides it, watches it with `watchHiddenFeedElement()`
+  (the same style-observer pattern as above), and calls `injectAt` with the
+  feed element as the anchor and a `|force` key suffix, so its dedup key
+  never collides with the auto-detection flow's.
+
+The two paths run off separate hide/watch state — `autoHiddenEl` /
+`autoStyleObserver` for auto-detection, `forceHiddenEl` / `forceStyleObserver`
+for force mode (both in content/01-state.js) — so toggling Ctrl+G mid-session
+doesn't have them fight over the same variables. `unhideAutoFeed()` and
+`disableForceMode()` each clean up their own side whenever the panel is torn
+down, the page navigates away (`ghostddit:locationchange`), or the other mode
+takes over.
 
 Force mode is a single global on/off switch, not a per-page one, and it's
 persisted in a `ghostddit_force_mode` cookie (`true`/`false`) on reddit.com
@@ -128,54 +154,23 @@ via `readForceModeCookie()` / `writeForceModeCookie()` in
 content/01-state.js, so it survives page reloads and new tabs, not just
 in-app navigation. `let forceMode` is initialized from that cookie at
 script load, and `toggleForceMode()` writes it back out on every toggle.
-Reddit tears down and rebuilds `<shreddit-feed>` on every SPA navigation,
-so on `ghostddit:locationchange` the force-reveal listener only releases
-its reference to the now-stale feed element — it does not touch
-`forceMode` or the cookie. `tryInject()` (content/10-orchestrator.js)
-checks `forceMode` first: if it's set, it re-applies `forceInject()` to
-whatever profile page was just navigated to (or the one already loaded,
-on a fresh page load) instead of bailing out, which is what makes the
-toggle keep working across every profile, tab, and reload until Ctrl+G
-turns it off. The two paths still never fight over the panel —
-`tryInject()`'s normal empty-state branch only runs when `forceMode` is
-off. Note content/12-bootstrap.js calls its initial `tryInject()` via
-`setTimeout(tryInject, 0)` rather than synchronously — that's required
-so `forceInject()` (defined later, in content/13-force-reveal.js) exists
-by the time a cookie-restored `forceMode` needs it on a cold page load.
+`tryInject()` checks `forceMode` first: if it's set, it re-applies
+`forceInject()` to whatever profile page is loaded instead of running
+auto-detection, which is what makes the toggle keep working across every
+profile, tab, and reload until Ctrl+G turns it off. content/12-bootstrap.js
+calls its initial `tryInject()` via `setTimeout(tryInject, 0)` rather than
+synchronously, so `forceInject()` (defined later, in
+content/13-force-reveal.js) exists by the time a cookie-restored `forceMode`
+needs it on a cold page load.
 
 The keydown listener is registered on `document` in the capture phase and
 calls `preventDefault()` / `stopImmediatePropagation()` before Reddit's own
 page scripts or the browser's own Ctrl+G ("Find Next") binding see the event.
 
-### Surviving Reddit's re-renders on tab switches
-
-Switching between Overview/Posts/Comments on a profile is an in-app route
-change (`pushState`), not a full reload, and Reddit re-renders the *same*
-elements in place rather than replacing them outright. Two separate
-problems come from that, handled two different ways:
-
-- **Auto-detection path (no force mode):** `tryInject()` used to inject the
-  moment it saw Reddit's empty-state placeholder, but that placeholder is
-  often transient — Reddit shows it for an instant while the real tab
-  content is still loading. Injecting immediately anchored Ghostddit to a
-  node Reddit was about to replace, stranding the panel below the real
-  content once it finished loading. `tryInject()` now debounces via
-  `injectCheckTimer`: every mutation push the check back by 400ms, so it
-  only commits once the DOM has held still for a moment. If the empty
-  state is gone by the time the check fires, `removeStalePanel()` cleans
-  up instead of injecting.
-- **Force mode:** here Reddit's own feed genuinely has content, and
-  `forceInject()` hides the `<shreddit-feed>` element itself via inline
-  `display:none`. The problem is that Reddit's internal re-render on a tab
-  switch can reset that element's `style` attribute directly — a mutation
-  that content/12-bootstrap.js's `MutationObserver` (`childList`/`subtree`
-  only) never sees, since no nodes are added or removed. `forceInject()`
-  now pairs the hide with `watchHiddenFeedElement()`, a second, dedicated
-  `MutationObserver` on just that element watching `attributes: ['style']`,
-  which re-applies `display:none` the instant Reddit undoes it.
-  `forceInject()` also always re-asserts the hide on every call rather than
-  only the first time, and `stopWatchingHiddenFeed()` tears the observer
-  down whenever the element is released (navigation, disabling force mode).
+While force mode is active, the injected panel's header shows a small hint
+— "Ctrl+G / Cmd+G to turn off" (`.ghostddit-header-hint` in content.css) —
+set via `injectAt`'s `hintText` option (content/10-orchestrator.js) whenever
+the `|force` key suffix is present. Auto-detection mode shows no hint.
 
 ## What's-new panel
 

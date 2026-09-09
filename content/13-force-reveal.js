@@ -27,6 +27,33 @@ function stopWatchingHiddenFeed() {
     forceStyleObserverEl = null;
 }
 
+function watchAutoHiddenFeed(el) {
+    if (autoStyleObserver && autoStyleObserverEl === el) return;
+    stopWatchingAutoHiddenFeed();
+    autoStyleObserver = new MutationObserver(() => {
+        if (forceMode || autoHiddenEl !== el) return;
+        if (el.style.display !== 'none') hideFeedElement(el);
+    });
+    autoStyleObserver.observe(el, { attributes: true, attributeFilter: ['style'] });
+    autoStyleObserverEl = el;
+}
+
+function stopWatchingAutoHiddenFeed() {
+    if (autoStyleObserver) {
+        try { autoStyleObserver.disconnect(); } catch (e) {}
+    }
+    autoStyleObserver = null;
+    autoStyleObserverEl = null;
+}
+
+function unhideAutoFeed() {
+    stopWatchingAutoHiddenFeed();
+    if (autoHiddenEl) {
+        try { autoHiddenEl.style.removeProperty('display'); } catch (e) {}
+        autoHiddenEl = null;
+    }
+}
+
 function forceInject(ctx) {
     const feedEl = findFeedElement();
     if (!feedEl) return;
@@ -63,6 +90,7 @@ function toggleForceMode() {
     writeForceModeCookie(forceMode);
     if (forceMode) {
         clearTimeout(injectCheckTimer);
+        unhideAutoFeed();
         const ctx = parseProfileContext();
         if (ctx) forceInject(ctx);
     } else {
@@ -85,4 +113,5 @@ window.addEventListener('ghostddit:locationchange', () => {
         try { forceHiddenEl.style.removeProperty('display'); } catch (e) {}
         forceHiddenEl = null;
     }
+    unhideAutoFeed();
 });

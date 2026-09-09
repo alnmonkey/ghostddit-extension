@@ -2,6 +2,8 @@
 
 function injectAt(ctx, anchorEl, keySuffix, headerPrefix) {
     const key = contextKey(ctx) + (keySuffix || '');
+    const isForce = keySuffix === '|force';
+    const hintText = isForce ? 'Ctrl+G / Cmd+G to turn off' : '';
 
     if (key === lastContextKey) {
         const panel = document.getElementById(PANEL_ID);
@@ -32,7 +34,7 @@ function injectAt(ctx, anchorEl, keySuffix, headerPrefix) {
         commentsLoading = false;
         commentsExhausted = false;
 
-        const panel = ensurePanel(anchorEl, { headerText: `${headerPrefix || ''}Revealed Comments` });
+        const panel = ensurePanel(anchorEl, { headerText: `${headerPrefix || ''}Revealed Comments`, hintText });
         try { panel._ghostdditObserver?.disconnect(); } catch (e) {}
         setupCommentsSentinel(panel, myGeneration);
         loadComments(myGeneration, panel);
@@ -47,16 +49,18 @@ function injectAt(ctx, anchorEl, keySuffix, headerPrefix) {
     loading = false;
     seenPostIds = new Set();
 
-    ensurePanel(anchorEl, { headerText: `${headerPrefix || ''}Revealed Posts` });
+    ensurePanel(anchorEl, { headerText: `${headerPrefix || ''}Revealed Posts`, hintText });
     loadMore(myGeneration);
 }
 
 function removeStalePanel() {
     const panel = document.getElementById(PANEL_ID);
-    if (!panel) return;
-    try { panel._ghostdditObserver?.disconnect(); } catch (e) {}
-    panel.remove();
+    if (panel) {
+        try { panel._ghostdditObserver?.disconnect(); } catch (e) {}
+        panel.remove();
+    }
     lastContextKey = null;
+    unhideAutoFeed();
 }
 
 function tryInject() {
@@ -72,27 +76,41 @@ function tryInject() {
     }
 
     const ctx = parseProfileContext();
-    if (!ctx) return;
+    if (!ctx) {
+        if (lastContextKey) removeStalePanel();
+        return;
+    }
 
-    if (!findEmptyFeedContent()) {
-        removeStalePanel();
+    const key = contextKey(ctx);
+
+    if (key === lastContextKey) {
+        const panel = document.getElementById(PANEL_ID);
+        if (panel && !panel.isConnected && autoHiddenEl) {
+            autoHiddenEl.insertAdjacentElement('afterend', panel);
+        }
         return;
     }
 
     clearTimeout(injectCheckTimer);
-    const key = contextKey(ctx);
     injectCheckTimer = setTimeout(() => {
         if (forceMode) return;
 
         const stillCtx = parseProfileContext();
         if (!stillCtx || contextKey(stillCtx) !== key) return;
 
-        const stillEmptyEl = findEmptyFeedContent();
-        if (!stillEmptyEl) {
+        if (!findEmptyFeedContent()) {
             removeStalePanel();
             return;
         }
 
-        injectAt(stillCtx, stillEmptyEl, '', '');
+        const feedEl = findFeedElement();
+        if (!feedEl) return;
+
+        if (autoHiddenEl && autoHiddenEl !== feedEl) unhideAutoFeed();
+        autoHiddenEl = feedEl;
+        hideFeedElement(feedEl);
+        watchAutoHiddenFeed(feedEl);
+
+        injectAt(stillCtx, feedEl, '', '');
     }, 400);
 }

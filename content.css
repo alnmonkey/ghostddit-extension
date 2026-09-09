@@ -33,6 +33,13 @@
     color: var(--color-neutral-content-strong, #1a1a1b);
 }
 
+#ghostddit-revealed-posts .ghostddit-header-hint {
+    font-size: 11px;
+    color: var(--color-neutral-content-weak, #7c7c7c);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
 #ghostddit-revealed-posts .ghostddit-list {
     display: flex;
     flex-direction: column;

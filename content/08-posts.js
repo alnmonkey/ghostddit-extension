@@ -92,6 +92,7 @@ function ensurePanel(emptyFeedEl, options) {
 
     const opts = options || {};
     const headerText = opts.headerText || 'Revealed Posts';
+    const hintText = opts.hintText || '';
 
     panel = document.createElement('div');
     panel.id = PANEL_ID;
@@ -99,6 +100,7 @@ function ensurePanel(emptyFeedEl, options) {
     <div class="ghostddit-header">
         <span class="ghostddit-badge">Ghostddit</span>
         <span class="ghostddit-header-text">${headerText}</span>
+        ${hintText ? `<span class="ghostddit-header-hint">${esc(hintText)}</span>` : ''}
     </div>
     <div class="ghostddit-list"></div>
     <div class="ghostddit-status"></div>
